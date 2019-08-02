@@ -14,7 +14,7 @@ import (
 
 func main() {
 	gelfWriter, _ := gelf.NewWriter("localhost:12201")
-	logger, err = gelfkit.NewGelfLogger(gelfWriter)
+	logger, _ := gelfkit.NewGelfLogger(gelfWriter)
 	logger = log.With(logger, "caller", log.Caller(4))
 	
 	logger.Log("msg", "Hello world")
