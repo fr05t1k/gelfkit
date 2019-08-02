@@ -1,4 +1,4 @@
-module gelfkit
+module github.com/fr05t1k/gelfkit
 
 go 1.12
 
