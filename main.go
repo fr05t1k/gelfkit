@@ -3,11 +3,14 @@ package gelfkit
 import (
 	"fmt"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"gopkg.in/Graylog2/go-gelf.v1/gelf"
 	"os"
 	"path"
 	"time"
 )
+
+const defaultLevel = gelf.LOG_INFO
 
 type GelfWriter interface {
 	WriteMessage(m *gelf.Message) (err error)
@@ -33,17 +36,40 @@ func (l *GelfLogger) Log(keyvals ...interface{}) error {
 		extra[fmt.Sprintf("%v", key)] = val
 	}
 
+	// integration with "github.com/go-kit/kit/log/level"
+	levelValue := getLevel(extra)
+	delete(extra, "level")
+
 	m := gelf.Message{
 		Host:     l.host,
 		Version:  l.version,
 		TimeUnix: float64(time.Now().Unix()),
-		Level:    gelf.LOG_INFO,
+		Level:    levelValue,
 		Facility: l.facility,
 		Extra:    extra,
 		RawExtra: nil,
 	}
 
 	return l.gelfWriter.WriteMessage(&m)
+}
+
+func getLevel(extra map[string]interface{}) int32 {
+	value, ok := extra["level"]
+	if !ok {
+		return defaultLevel
+	}
+
+	levelValue, ok := value.(level.Value)
+	switch levelValue {
+	case level.ErrorValue():
+		return gelf.LOG_ERR
+	case level.DebugValue():
+		return gelf.LOG_DEBUG
+	case level.InfoValue():
+		return gelf.LOG_INFO
+	default:
+		return defaultLevel
+	}
 }
 
 func NewGelfLogger(writer GelfWriter) (*GelfLogger, error) {

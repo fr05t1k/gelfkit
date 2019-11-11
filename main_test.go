@@ -2,6 +2,7 @@ package gelfkit
 
 import (
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"gopkg.in/Graylog2/go-gelf.v1/gelf"
 	"reflect"
 	"testing"
@@ -98,6 +99,20 @@ func TestGelfLogger_Log(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "integration with level package",
+			keyvals: []interface{}{
+				level.Key(), level.DebugValue(),
+				"key", "value",
+			},
+			want: gelf.Message{
+				Level: gelf.LOG_DEBUG,
+				Extra: map[string]interface{}{
+					"key": "value",
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -119,6 +134,47 @@ func TestGelfLogger_Log(t *testing.T) {
 
 			if !reflect.DeepEqual(tt.want.Extra, got.Extra) {
 				t.Errorf("Log() = %v, want %v", got.Extra, tt.want.Extra)
+			}
+		})
+	}
+}
+
+func Test_getLevel(t *testing.T) {
+	tests := []struct {
+		name  string
+		extra map[string]interface{}
+		want  int32
+	}{
+		{
+			name:  "info",
+			extra: map[string]interface{}{"level": level.InfoValue()},
+			want:  gelf.LOG_INFO,
+		},
+		{
+			name:  "error",
+			extra: map[string]interface{}{"level": level.ErrorValue()},
+			want:  gelf.LOG_ERR,
+		},
+		{
+			name:  "debug",
+			extra: map[string]interface{}{"level": level.DebugValue()},
+			want:  gelf.LOG_DEBUG,
+		},
+		{
+			name:  "no key",
+			extra: map[string]interface{}{"level2": level.DebugValue()},
+			want:  defaultLevel,
+		},
+		{
+			name:  "wrong type",
+			extra: map[string]interface{}{"level": "debug"},
+			want:  defaultLevel,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getLevel(tt.extra); got != tt.want {
+				t.Errorf("getLevel() = %v, want %v", got, tt.want)
 			}
 		})
 	}
