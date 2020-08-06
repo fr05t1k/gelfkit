@@ -17,10 +17,15 @@ type GelfWriter interface {
 }
 
 type GelfLogger struct {
-	version    string
-	gelfWriter GelfWriter
-	host       string
-	facility   string
+	version       string
+	gelfWriter    GelfWriter
+	host          string
+	facility      string
+	convertErrors bool
+}
+
+func (l *GelfLogger) EnableConvertErrors() {
+	l.convertErrors = true
 }
 
 func (l *GelfLogger) Log(keyvals ...interface{}) error {
@@ -39,6 +44,9 @@ func (l *GelfLogger) Log(keyvals ...interface{}) error {
 	// integration with "github.com/go-kit/kit/log/level"
 	levelValue := getLevel(extra)
 	delete(extra, "level")
+	if l.convertErrors {
+		extra = convertErrors(extra)
+	}
 
 	m := gelf.Message{
 		Host:     l.host,
@@ -51,6 +59,16 @@ func (l *GelfLogger) Log(keyvals ...interface{}) error {
 	}
 
 	return l.gelfWriter.WriteMessage(&m)
+}
+
+func convertErrors(extra map[string]interface{}) map[string]interface{} {
+	if value, ok := extra["err"]; ok {
+		if err, ok := value.(error); ok {
+			extra["err"] = fmt.Sprintf("%s", err.Error())
+		}
+	}
+
+	return extra
 }
 
 func getLevel(extra map[string]interface{}) int32 {
@@ -78,10 +96,11 @@ func NewGelfLogger(writer GelfWriter) (*GelfLogger, error) {
 		return nil, err
 	}
 	l := &GelfLogger{
-		gelfWriter: writer,
-		version:    "1.0",
-		host:       host,
-		facility:   path.Base(os.Args[0]),
+		gelfWriter:    writer,
+		version:       "1.0",
+		host:          host,
+		facility:      path.Base(os.Args[0]),
+		convertErrors: false,
 	}
 
 	return l, nil

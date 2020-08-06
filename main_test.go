@@ -1,6 +1,7 @@
 package gelfkit
 
 import (
+	"fmt"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"gopkg.in/Graylog2/go-gelf.v1/gelf"
@@ -31,10 +32,11 @@ func NewHistoryWriter() *HistoryGelfWriter {
 
 func TestGelfLogger_Log(t *testing.T) {
 	tests := []struct {
-		name    string
-		keyvals []interface{}
-		want    gelf.Message
-		wantErr bool
+		name                  string
+		keyvals               []interface{}
+		enableErrorConverting bool
+		want                  gelf.Message
+		wantErr               bool
 	}{
 		{
 			name: "simple",
@@ -113,6 +115,32 @@ func TestGelfLogger_Log(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:                  "error converting",
+			enableErrorConverting: true,
+			keyvals: []interface{}{
+				"err", fmt.Errorf("test"),
+			},
+			want: gelf.Message{
+				Extra: map[string]interface{}{
+					"err": "test",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:                  "disable error converting",
+			enableErrorConverting: false,
+			keyvals: []interface{}{
+				"err", fmt.Errorf("test"),
+			},
+			want: gelf.Message{
+				Extra: map[string]interface{}{
+					"err": fmt.Errorf("test"),
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -120,6 +148,9 @@ func TestGelfLogger_Log(t *testing.T) {
 			l, err := NewGelfLogger(w)
 			if err != nil {
 				t.Errorf("NewGelfLogger() error = %v", err)
+			}
+			if tt.enableErrorConverting {
+				l.EnableConvertErrors()
 			}
 
 			if err := l.Log(tt.keyvals...); (err != nil) != tt.wantErr {

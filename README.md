@@ -7,9 +7,10 @@ GelfKit allow to use [go-kit logger](https://github.com/go-kit/kit/tree/master/l
 package main
 
 import (
-	"fmt"
-	"gopkg.in/Graylog2/go-gelf.v1/gelf"
-	"github.com/fr05t1k/gelfkit"
+
+"fmt"
+"github.com/fr05t1k/gelfkit"
+"gopkg.in/Graylog2/go-gelf.v1/gelf"
 )
 
 func main() {
@@ -20,4 +21,20 @@ func main() {
 	logger.Log("msg", "Hello world")
 	
 }
+```
+
+# Converting errors
+
+You can covert `err` key to string by calling `EnableConvertErrors` method.
+```go
+    logger.EnableConvertErrors()
+```
+
+In this case if you pass an error in `err` field it will be converted by calling `Error()` method.
+```go
+    logger.Log("err", fmt.Errorf("test"))
+```
+It will  be converted to 
+```
+    {"err": "test"}
 ```
